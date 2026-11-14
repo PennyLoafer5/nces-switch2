@@ -10,7 +10,7 @@ See [PORTING_NOTES.md](PORTING_NOTES.md) for the full explanation.
 
 > **Status:** builds a Switch 2 `.nro`, boots, and is playable on real hardware.
 > Controller enumeration, menu navigation, A/B labels, D-pad movement and pause
-> were verified. See [PORTING_NOTES.md](PORTING_NOTES.md) for the details.
+> were verified.
 
 ## Requirements
 
