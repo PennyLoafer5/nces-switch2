@@ -1,26 +1,21 @@
 #include "sdl_starter.h"      // Custom header file for SDL helper functions
+#include "platform.h"         // Wii U / Switch 2 platform shim
 #include <time.h>             // For random number seeding and time functions
 #include <unistd.h>           // For chdir() to change directory
-#include <romfs-wiiu.h>       // Wii U ROM filesystem functions
-#include <whb/proc.h>         // Wii U process handling
 #include <string>             // C++ string support
 #include <stdlib.h> // rand, srand
 #include <vector>
 #include <cmath>
 #include <algorithm>
-#include <whb/file.h>
 #include <sys/stat.h>
 #include <sstream>
-#include <whb/log_cafe.h>
-#include <whb/log_udp.h>
-#include <whb/log.h>
 
 const std::string gameModeNames[] = {
     "Nic Cage Eats Stuff",
     "EASY Nic Cage Eats Stuff",
     "IMPOSSIBLE Nic Cage Eats Stuff",
     "Nic Cage Eats Stuff 2",
-    "Nic Crash (warning: this will crash your Wii U)",
+    "Nic Crash (warning: this will crash the Switch 2 app)",
     "Don't touch red"
 };
 
@@ -56,7 +51,7 @@ const std::string gameOverText[] = {
     "How did you die? Press A to restart or - to change game.",
     "You are trash lol. Press A to restart or - to change game.",
     "GAME OVER. Press A to restart or - to change game.",
-    "Your Wii U should have crashed by now. Press A to restart or - to change game.",
+    "Your Switch 2 should have crashed by now. Press A to restart or - to change game.",
     "You died! Press A to restart or - to change game."
 };
 
@@ -236,70 +231,25 @@ void refreshControllers() {
     SDL_GameControllerClose(controller2);
     SDL_GameControllerClose(controller3);
     SDL_GameControllerClose(controller4);
-    auto* firstConnectedController = SDL_GameControllerOpen(0);
-    auto* secondConnectedController = SDL_GameControllerOpen(1);
-    auto* thirdConnectedController = SDL_GameControllerOpen(2);
-    auto* fourthConnectedController = SDL_GameControllerOpen(3);
-    auto* fifthConnectedController = SDL_GameControllerOpen(4);
-    if (SDL_GameControllerGetPlayerIndex(firstConnectedController) == 0) {
-        controller = firstConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(firstConnectedController) == 1) {
-        controller1 = firstConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(firstConnectedController) == 2) {
-        controller2 = firstConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(firstConnectedController) == 3) {
-        controller3 = firstConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(firstConnectedController) == 4) {
-        controller4 = firstConnectedController;
-    }
-    
-    if (SDL_GameControllerGetPlayerIndex(secondConnectedController) == 0) {
-        controller = secondConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(secondConnectedController) == 1) {
-        controller1 = secondConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(secondConnectedController) == 2) {
-        controller2 = secondConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(secondConnectedController) == 3) {
-        controller3 = secondConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(secondConnectedController) == 4) {
-        controller4 = secondConnectedController;
+    controller = controller1 = controller2 = controller3 = controller4 = nullptr;
+
+    // The devkitPro Switch SDL2 joystick driver always reports SDL player
+    // index -1 and exposes all controller slots.  The original Wii U code
+    // assigned a controller only when SDL_GameControllerGetPlayerIndex()
+    // returned 0..4, so on Switch every pointer stayed null.  Map the system
+    // default pad to player slot 0 and the other connected pads to 1..4.
+    SDL_GameController* opened[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+    for (int device = 0; device < 5; device++) {
+        if (platformControllerConnected(device)) {
+            opened[device] = SDL_GameControllerOpen(device);
+        }
     }
 
-    if (SDL_GameControllerGetPlayerIndex(thirdConnectedController) == 0) {
-        controller = thirdConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(thirdConnectedController) == 1) {
-        controller1 = thirdConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(thirdConnectedController) == 2) {
-        controller2 = thirdConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(thirdConnectedController) == 3) {
-        controller3 = thirdConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(thirdConnectedController) == 4) {
-        controller4 = thirdConnectedController;
-    }
-
-    if (SDL_GameControllerGetPlayerIndex(fourthConnectedController) == 0) {
-        controller = fourthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fourthConnectedController) == 1) {
-        controller1 = fourthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fourthConnectedController) == 2) {
-        controller2 = fourthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fourthConnectedController) == 3) {
-        controller3 = fourthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fourthConnectedController) == 4) {
-        controller4 = fourthConnectedController;
-    }
-
-    if (SDL_GameControllerGetPlayerIndex(fifthConnectedController) == 0) {
-        controller = fifthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fifthConnectedController) == 1) {
-        controller1 = fifthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fifthConnectedController) == 2) {
-        controller2 = fifthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fifthConnectedController) == 3) {
-        controller3 = fifthConnectedController;
-    } else if (SDL_GameControllerGetPlayerIndex(fifthConnectedController) == 4) {
-        controller4 = fifthConnectedController;
-    }
+    controller  = opened[0];
+    controller1 = opened[1];
+    controller2 = opened[2];
+    controller3 = opened[3];
+    controller4 = opened[4];
 
     for (auto& player : players) {
         if (player.controllerId == 0) {
@@ -317,7 +267,7 @@ void refreshControllers() {
 
     numberOfPlayers = 0;
     for (auto& player : players) {
-        if (player.controller != nullptr && SDL_GameControllerGetPlayerIndex(player.controller) >= 0) {
+        if (player.controller != nullptr && SDL_GameControllerGetAttached(player.controller)) {
             numberOfPlayers++;
         }
     }
@@ -333,19 +283,21 @@ void handleEvents() {
             break;
         }
 
-        if (event.type == SDL_JOYBUTTONDOWN) { // Controller button pressed
-            if (event.jbutton.button == BUTTON_MINUS) { // Minus button quits back to game select
+        if (event.type == SDL_CONTROLLERBUTTONDOWN) { // Controller button pressed
+            // Use SDL's controller button names instead of Wii U raw joystick
+            // indices.  On Switch, Minus is BACK and Plus is START.
+            if (event.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) { // Minus: back to game select
                 currentScreen = "menu";
                 isGamePaused = false;
             }
 
-            if (event.jbutton.button == BUTTON_PLUS) { // Plus button toggles pause
+            if (event.cbutton.button == SDL_CONTROLLER_BUTTON_START) { // Plus: pause
                 isGamePaused = !isGamePaused;
                 Mix_PlayChannel(-1, sound, 0); // Play sound effect
             }
         }
         if (event.type == SDL_CONTROLLERDEVICEADDED) {
-            // Controller was connected!
+            // Controller was connected
             // refresh all controllers
             //SDL_GameControllerClose(controller);
             //controller = SDL_GameControllerOpen(0);
@@ -355,7 +307,7 @@ void handleEvents() {
         }
 
         if (event.type == SDL_CONTROLLERDEVICEREMOVED) {
-            // Controller was removed!
+            // Controller was removed
             // refresh all controllers
             //SDL_GameControllerClose(controller);
             //controller = SDL_GameControllerOpen(0);
@@ -569,7 +521,7 @@ void update(float deltaTime) {
         currentA = SDL_GameControllerGetButton(controller1, SDL_CONTROLLER_BUTTON_A);
     }
     if (currentScreen == "menu") {
-        if (SDL_GameControllerGetPlayerIndex(controller) >= 0 && controller != nullptr && SDL_GameControllerGetAttached(controller)) {
+        if (controller != nullptr && SDL_GameControllerGetAttached(controller)) {
             if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A)) {
                 currentScreen = "game";            
                 isGamePaused = false;
@@ -622,9 +574,6 @@ void update(float deltaTime) {
     if (currentScreen == "game") {
         int playerI2 = 0;
         for (auto& playerSprite : players) {
-            if (SDL_GameControllerGetPlayerIndex(playerSprite.controller) >= 0 && playerSprite.controller != nullptr && SDL_GameControllerGetAttached(playerSprite.controller)) {
-                playerSprite.controllerId = SDL_GameControllerGetPlayerIndex(playerSprite.controller);
-            }
             auto currentController = playerSprite.controller;
             if (!playerSprite.immobile && enemyEaten < maxEnemyEaten[currentGameMode] * numberOfPlayers) {
                 if (SDL_GameControllerGetButton(currentController, SDL_CONTROLLER_BUTTON_DPAD_UP)) {
@@ -760,7 +709,7 @@ void update(float deltaTime) {
                         enemy.fy = rng(0, SCREEN_HEIGHT - 30);
                         if (enemyEaten >= maxEnemyEaten[currentGameMode] * numberOfPlayers) {
                             if (contains(gameModeModifiers[currentGameMode], "crashOnLose")) {
-                                // Crash the Wii U
+                                // Crash the Switch 2 app
                                 int* crash = nullptr;
                                 *crash = 0; // Dereference null pointer to cause a crash
                             }
@@ -896,8 +845,8 @@ void update(float deltaTime) {
             if (scoreAccumulator >= 1.0f) {
                 tokenseaten++;
                 scoreAccumulator -= scoreAccumulator;
-                WHBLogPrint((tokenToCollectText[currentGameMode] + std::to_string(tokenseaten) + "\n").c_str());
-                WHBLogPrint("a\n");
+                platformLog((tokenToCollectText[currentGameMode] + std::to_string(tokenseaten) + "\n").c_str());
+                platformLog("a\n");
             }
         }
 
@@ -957,6 +906,12 @@ void render() {
     //drawText(renderer, std::to_string(SDL_GameControllerGetPlayerIndex(controller4)), 100, 600);
 
     if (currentScreen == "menu") {
+        // Helpful diagnostic if controller enumeration fails on a new port.
+        if ((controller == nullptr || !SDL_GameControllerGetAttached(controller)) &&
+            (controller1 == nullptr || !SDL_GameControllerGetAttached(controller1))) {
+            drawText(renderer, "No controller detected", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 100, colors[2], "center");
+        }
+
         // Update selected game text
         drawText(renderer, "Game: " + gameModeNames[currentGameMode], SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 50, colors[8], "center");
 
@@ -1054,17 +1009,19 @@ void render() {
 
 // ------------------ MAIN FUNCTION ------------------
 int main(int argc, char **argv) {
-    WHBProcInit();       // Initialize Wii U process system
-    romfsInit();         // Initialize ROM filesystem
-    chdir("romfs:/");    // Change working directory to ROM filesystem
-    WHBLogCafeInit();
-    WHBLogUdpInit();
+    if (!platformInit()) {      // Process/applet + ROM filesystem
+        SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize ROMFS");
+        return 1;
+    }
+    chdir("romfs:/");           // Change working directory to ROM filesystem
+    platformLogInit();          // Debug logging (no-op on Switch 2)
 
     // Create SDL window and renderer
     window = SDL_CreateWindow("Nic Cage Eats Stuff", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     if (startSDLSystems(window, renderer) > 0) { // Custom SDL initialization
+        platformShutdown();
         return 1;
     }
 
@@ -1103,14 +1060,16 @@ int main(int argc, char **argv) {
     float deltaTime = 0.0f;
 
     // ------------------ MAIN LOOP ------------------
-    while (isGameRunning && WHBProcIsRunning()) {
+    while (isGameRunning && platformRunning()) {
         currentFrameTime = SDL_GetTicks();
         deltaTime = (currentFrameTime - previousFrameTime) / 1000.0f; // Convert ms -> seconds
         previousFrameTime = currentFrameTime;
 
         handleEvents();          // Handle input events
 
-        if (!isGamePaused) {     // Only update game logic if not paused
+        // Menu navigation must keep working even if Plus toggled the pause flag
+        // before a game was started; only pause the gameplay update itself.
+        if (!isGamePaused || currentScreen == "menu") {
             update(deltaTime);
         }
 
@@ -1125,8 +1084,7 @@ int main(int argc, char **argv) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     stopSDLSystems();
-    romfsExit();
-    WHBProcShutdown();
+    platformShutdown();
 
     return 0; // Exit program
 }

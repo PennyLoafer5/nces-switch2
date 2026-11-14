@@ -10,6 +10,15 @@ int startSDLSystems(SDL_Window *window, SDL_Renderer *renderer)
         return 1;
     }
 
+#if defined(__SWITCH2__) || defined(__SWITCH__)
+    SDL_GameControllerAddMapping(
+        "000038f853776974636820436f6e7400,Switch Controller,"
+        "a:b0,b:b1,back:b11,dpdown:b15,dpleft:b12,dpright:b14,dpup:b13,"
+        "leftshoulder:b6,leftstick:b4,lefttrigger:b8,leftx:a0,lefty:a1,"
+        "rightshoulder:b7,rightstick:b5,righttrigger:b9,rightx:a2,righty:a3,"
+        "start:b10,x:b2,y:b3,");
+#endif
+
     if (window == nullptr)
     {
         SDL_LogCritical(1, "Failed to create window: ");

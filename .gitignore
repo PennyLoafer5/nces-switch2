@@ -1,9 +1,5 @@
-out/
 build/
 *.nro
+*.nacp
 *.elf
-*.rpx
-*.wuhb
-.vscode/
-.fleet/
-.idea/
+*.map
