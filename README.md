@@ -38,48 +38,9 @@ make
 ```
 
 Output:
-
-| File | Purpose |
-| --- | --- |
-| `nces-switch2.nro` | Homebrew executable with icon, NACP metadata and RomFS |
-| `nces-switch2.nacp` | Generated metadata (also embedded in the NRO) |
-| `nces-switch2.elf` | Unstripped AArch64 ELF for debugging |
-
-`make clean` removes all three plus `build/`.
-
-## Custom icon and metadata
-
-The top of the `Makefile` controls the NACP metadata and the icon:
-
-```make
-APP_TITLE   := Nic Cage Eats Stuff
-APP_AUTHOR  := Cart1416
-APP_VERSION := 1.0.0
-ICON        := icon.png
-```
-
-- `APP_TITLE` is the name shown by the launcher.
-- `APP_AUTHOR` is the author string stored in the NACP.
-- `APP_VERSION` is a free-form string; the NACP version field is 16 bytes, so
-  keep it to 15 characters or fewer.
-- `ICON` is a path relative to the project root.
-
-`elf2nro` embeds the icon file byte-for-byte; it does not resize or convert it.
-The standard Switch homebrew menu decodes JPEG icons and expects 256×256, so a
-custom icon should be a square 256×256 JPEG (for example `ICON := icon.jpg`).
-The original `icon.png` is a 128×128 PNG and is embedded as-is.
-
-After changing the icon or metadata, rebuild:
-
-```sh
-export DEVKITPRO=/opt/devkitpro
-cd nces-switch2
-make clean && make
-```
-
-`make clean` is required after an icon change because the NRO rule does not
-list the icon as a dependency. The rebuilt `nces-switch2.nro` is written to the
-project root.
+- `nces-switch2.nro` 
+- `nces-switch2.nacp` 
+- `nces-switch2.elf` 
 
 ## Run
 
@@ -89,32 +50,6 @@ If your setup uses `nxlink`, the usual form is:
 
 ```sh
 nxlink -s nces-switch2.nro
-```
-
-The game is controller-only:
-
-- **A** — select / hold for invincibility
-- **D-Pad or left stick** — move
-- **Plus** — pause (in a game)
-- **Minus** — back to game select
-
-The Switch controller is remapped to label order, so the on-screen **A** means
-the physical A button (not the bottom face button).
-
-## Project layout
-
-```
-nces-switch2/
-├── Makefile              # Switch 2 build, NRO metadata, RomFS
-├── include/
-│   └── platform.h        # Wii U / Switch 2 process, RomFS and logging shim
-├── src/
-│   ├── main.cpp          # game, with platform calls shimmed
-│   ├── sdl_starter.cpp   # SDL init/asset helpers + Switch button mapping
-│   └── sdl_starter.h     # SDL helpers (Wii U button defines removed)
-├── romfs/                # original game assets, unchanged
-├── icon.png              # launcher icon (original; see “Custom icon and metadata”)
-└── LICENSE               # original MIT license
 ```
 
 ## What was ported
@@ -135,11 +70,9 @@ Only the platform boundary changed:
 
 The game logic, SDL rendering, asset paths and screen size are intentionally
 untouched. No game assets were generated or modified; `romfs/` is used as-is.
-The launcher icon is the original file and can be replaced independently. See
-`PORTING_NOTES.md` for the controller details.
 
 ## Credits and license
 
 Original game and Wii U port: **Cart1416**.
-Switch 2 port: this project. MIT license, same as the original; see
+Switch 2 port: **PennyLoafer**. MIT license, same as the original; see
 [LICENSE](LICENSE).
