@@ -6,7 +6,6 @@ the Wii U homebrew port of *Nic Cage Eats Stuff*.
 It uses the public **ounce-devkit** (libounce, a libnx-compatible Switch 2
 library) and devkitPro's Switch SDL2 portlibs. The game code is kept as close
 to the Wii U original as possible; only platform-specific pieces were changed.
-See [PORTING_NOTES.md](PORTING_NOTES.md) for the full explanation.
 
 > **Status:** builds a Switch 2 `.nro`, boots, and is playable on real hardware.
 > Controller enumeration, menu navigation, A/B labels, D-pad movement and pause
